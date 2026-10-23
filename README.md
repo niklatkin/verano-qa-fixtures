@@ -16,6 +16,10 @@ bash zl-chunk-check.sh --hosts zenleafdispensaries.com --repeat 10 --every 180 -
 
 Needs `bash` and `curl`; `node` adds a JS syntax check. Read-only GET requests.
 
+## Versioned asset paths (COMPONENTS-17800)
+
+From v4.10.2 the site serves its JS under `/v/<build time>/_next/static/...`. The script fetches the exact URL the page emits, and the summary line shows the prefix and how many files are still under bare `/_next/static/` (`bare` should be 0 on a prefixed build).
+
 ## Output
 
 One summary line per host and pass, with the build (`sha`, `builtAt` from `/api/build-info`) and the count of bad files. Each bad file prints its size against the size in its ETag, `cf-ray` (the suffix is the Cloudflare edge, e.g. `-ORD` = Chicago), `cf-cache-status`, `age` and `x-envoy-upstream-service-time`.

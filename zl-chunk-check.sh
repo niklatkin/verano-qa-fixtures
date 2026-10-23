@@ -19,6 +19,7 @@
 #   bash zl-chunk-check.sh --repeat 10 --every 180  # 10 passes, 3 minutes apart
 #   bash zl-chunk-check.sh --hosts zenleafdispensaries.com --log run.tsv
 #
+# Handles the versioned asset prefix (/v/<build>/_next/static/...) from COMPONENTS-17800: fetches the exact URL the page emits.
 # Needs bash and curl. Optional: node (syntax check). Works on macOS, Linux, Git Bash.
 # Read-only: it only sends GET requests, the same ones a visitor's browser sends.
 
@@ -59,7 +60,10 @@ while [ "$pass" -lt "$REPEAT" ]; do
     builtAt=$(echo "$bi" | sed -n 's/.*"builtAt":"\([^"]*\)".*/\1/p')
     sha=$(echo "$bi" | sed -n 's/.*"sha":"\([0-9a-f]\{9\}\).*/\1/p')
     curl -s --compressed -A "$UA" -H 'Accept: text/html' "https://$host/" -o "$TMP/home.html"
-    files=$(grep -o '/_next/static/chunks/[A-Za-z0-9_.~-]*\.js' "$TMP/home.html" | sort -u)
+    # Asset paths, with the versioned prefix when the build has one (COMPONENTS-17800: /v/<build time>/_next/static/...).
+    files=$(grep -oE '(/v/[A-Za-z0-9]+)?/_next/static/chunks/[A-Za-z0-9_.~-]+\.js' "$TMP/home.html" | sort -u)
+    prefix=$(echo "$files" | sed -n 's#^\(/v/[A-Za-z0-9]*\)/_next/.*#\1#p' | sort -u | tr '\n' ' ')
+    bare=$(echo "$files" | grep -c '^/_next/' )
     n=0; bad=0
     for f in $files; do
       n=$((n + 1))
@@ -83,7 +87,7 @@ while [ "$pass" -lt "$REPEAT" ]; do
         echo "  BAD ${f##*/}  got $bytes of ${expected:-?} bytes  ray $ray  cache $cache  age ${age:-?}  upstream ${up:-?} ms  js $js"
       fi
     done
-    echo "$now  $host  build $sha builtAt $builtAt  chunks $n  bad $bad"
+    echo "$now  $host  build $sha builtAt $builtAt  prefix ${prefix:-none} bare $bare  chunks $n  bad $bad"
   done
   if [ "$pass" -lt "$REPEAT" ]; then sleep "$EVERY"; fi
 done
